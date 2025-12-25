@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>逆水寒治療強度計算器 (社群共建版)</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --bg: #f8f9fa;
+            --card: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            background: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        .action-bar {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            border-left: 5px solid var(--accent);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .title { font-size: 1.4rem; font-weight: bold; }
+
+        .calib-area {
+            background: #f8f9fa;
+            border: 2px dashed #cbd5e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .calib-area.show { display: block; }
+
+        .input-row { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 15px; }
+
+        label { display: block; font-weight: 600; font-size: 0.9rem; color: #7f8c8d; margin-bottom: 5px; }
+
+        input[type="number"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        input:focus { border-color: var(--accent); outline: none; }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            background: #f1f5f9;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .res-item { text-align: center; }
+        .res-val { font-size: 1.5rem; font-weight: bold; color: #2d3748; }
+        .res-label { font-size: 0.85rem; color: #718096; }
+        .highlight { color: #27ae60; }
+
+        .data-tag {
+            display: inline-flex;
+            align-items: center;
+            background: #fff;
+            border: 1px solid #cbd5e0;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin: 4px;
+            color: #4a5568;
+        }
+
+        .del-btn {
+            margin-left: 6px;
+            color: #e53e3e;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: #2980b9; }
+
+        .btn-outline { background: transparent; border: 2px solid #cbd5e0; color: #4a5568; }
+        .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+        .btn-small { padding: 4px 10px; font-size: 0.85rem; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.open { display: flex; }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .fit-info { font-size: 0.9rem; margin-top: 10px; }
+        .fit-good { color: #27ae60; }
+        .fit-bad { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚕️ 逆水寒治療強度計算器 (社群共建版)</h1>
+            <p>自由導入/導出數據配置，與其他玩家分享您的研究成果</p>
+
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; display:inline-block; margin-top:15px;">
+                <label style="color:white; display:inline;">基礎治療強度：</label>
+                <input type="number" id="base-healing" value="900" style="width:80px; padding:5px; border:none; border-radius:4px;" onchange="recalcAll()">
+            </div>
+
+            <div class="action-bar">
+                <button class="btn btn-primary" onclick="exportData()">📤 導出我的配置</button>
+                <button class="btn btn-primary" onclick="openImportModal()">📥 導入他人配置</button>
+                <button class="btn btn-outline" style="color:white; border-color:rgba(255,255,255,0.5);" onclick="resetToDefault()">🔄 重置為預設</button>
+            </div>
+        </div>
+
+        <div id="calculator-list"></div>
+    </div>
+
+    <!-- 導入彈窗 -->
+    <div id="import-modal" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-top:0;">導入配置數據</h2>
+            <p style="color:#666; font-size:0.9rem;">請將他人分享的 JSON 代碼貼在下方：</p>
+            <textarea id="import-area" rows="10" placeholder='{"base": 900, "data": [...]}'></textarea>
+            <div style="margin-top:20px; text-align:right;">
+                <button class="btn btn-outline" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="importData()">確認導入</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 導出彈窗 -->
+    <div id="export-modal" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-top:0;">導出配置數據</h2>
+            <p style="color:#666; font-size:0.9rem;">複製下方代碼分享給其他玩家，或者貼到論壇：</p>
+            <textarea id="export-area" rows="10" readonly></textarea>
+            <div style="margin-top:20px; text-align:right;">
+                <button class="btn btn-outline" onclick="document.getElementById('export-modal').classList.remove('open')">關閉</button>
+                <button class="btn btn-primary" onclick="copyExport()">複製代碼</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 預設數據 (基於之前的對話成果)
+        const defaultData = {
+            base: 900,
+            attributes: [
+                { 
+                    id: 'pofang', name: '破防', mul: 3, userVal: 3507, 
+                    data: [[4039, 2100]] // Tier 12
+                },
+                { 
+                    id: 'mingzhong', name: '命中', mul: 9, userVal: 475, 
+                    data: [[142, 1000], [253, 1100], [364, 1200], [475, 1300]] 
+                },
+                { 
+                    id: 'yuansu', name: '元素', mul: 7, userVal: 700, 
+                    data: [
+                        [250, 1000], [311, 1100], [417, 1200], [497, 1200],
+                        [577, 1300], [683, 1400], [723, 1400], [777, 1400], [817, 1400]
+                    ] 
+                },
+                { 
+                    id: 'kezhi', name: '克制', mul: 3, userVal: 1000, 
+                    data: [
+                        [132, 1000], [353, 1000], [470, 1100], [515, 1100], 
+                        [691, 1100], [793, 1200]
+                    ] 
+                },
+                { 
+                    id: 'hushi', name: '忽視抗性', mul: 9, userVal: 630, 
+                    data: [[240, 1100], [469, 1300], [910, 1700], [1151, 2000]] 
+                }
+            ]
+        };
+
+        let appState = JSON.parse(JSON.stringify(defaultData));
+
+        function init() {
+            // 嘗試從 localStorage 讀取用戶上次的數據
+            const saved = localStorage.getItem('healing_calc_data');
+            if (saved) {
+                try {
+                    appState = JSON.parse(saved);
+                    document.getElementById('base-healing').value = appState.base || 900;
+                } catch(e) { console.error('Load failed', e); }
+            }
+            renderAll();
+        }
+
+        function saveData() {
+            appState.base = parseFloat(document.getElementById('base-healing').value) || 900;
+            localStorage.setItem('healing_calc_data', JSON.stringify(appState));
+        }
+
+        function fitData(attrId) {
+            const attr = appState.attributes.find(a => a.id === attrId);
+            const base = parseFloat(document.getElementById('base-healing').value) || 900;
+            const pts = attr.data;
+
+            if (!pts || pts.length === 0) return { offset: 0, valid: false };
+
+            let cRanges = pts.map(p => {
+                const val = p[0];
+                const total = p[1];
+                const tier = Math.max(0, (total - base) / 100);
+
+                // Tier <= (Val + C) * mul / 1000 < Tier + 1
+                const min = tier * 1000 / attr.mul - val;
+                const max = (tier + 1) * 1000 / attr.mul - val;
+                return { min, max };
+            });
+
+            const overallMin = Math.max(...cRanges.map(r => r.min));
+            const overallMax = Math.min(...cRanges.map(r => r.max));
+
+            if (overallMin < overallMax) {
+                return { offset: (overallMin + overallMax) / 2, valid: true };
+            } else {
+                // 取最後一點估算
+                const last = pts[pts.length-1];
+                const t = Math.max(0, (last[1] - base) / 100);
+                const est = (t * 1000 / attr.mul) - last[0];
+                return { offset: est, valid: false };
+            }
+        }
+
+        function calculate(attrId) {
+            const attr = appState.attributes.find(a => a.id === attrId);
+            const fit = fitData(attrId);
+
+            const rawTier = (attr.userVal + fit.offset) * attr.mul / 1000;
+            const currentTier = Math.floor(rawTier);
+            const contrib = currentTier * 100;
+
+            const nextTier = currentTier + 1;
+            const exactNext = (nextTier * 1000 / attr.mul) - fit.offset;
+            const recNext = Math.ceil(exactNext);
+
+            return {
+                contrib,
+                recNext,
+                exactNext,
+                gap: recNext - attr.userVal,
+                offset: fit.offset,
+                valid: fit.valid
+            };
+        }
+
+        function renderAll() {
+            const container = document.getElementById('calculator-list');
+            container.innerHTML = '';
+
+            appState.attributes.forEach(attr => {
+                const res = calculate(attr.id);
+                const tags = attr.data.map((p, idx) => `
+                    <div class="data-tag">
+                        ${p[0]} → ${p[1]}
+                        <span class="del-btn" onclick="removeDataPoint('${attr.id}', ${idx})">×</span>
+                    </div>
+                `).join('');
+
+                const html = `
+                    <div class="card" style="border-left-color: ${getColor(attr.id)}">
+                        <div class="card-header">
+                            <div class="title">${attr.name}</div>
+                            <button class="btn btn-outline btn-small" onclick="toggleCalib('${attr.id}')">
+                                🔧 數據校準 (${attr.data.length})
+                            </button>
+                        </div>
+
+                        <div id="calib-${attr.id}" class="calib-area">
+                            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                                <div style="flex:1; min-width:120px;">
+                                    <label>屬性數值</label>
+                                    <input type="number" id="val-${attr.id}" placeholder="如 240">
+                                </div>
+                                <div style="flex:1; min-width:120px;">
+                                    <label>總治療強度</label>
+                                    <input type="number" id="heal-${attr.id}" placeholder="如 1100">
+                                </div>
+                                <button class="btn btn-primary" onclick="addDataPoint('${attr.id}')">添加數據</button>
+                            </div>
+                            <div style="margin-top:15px; display:flex; flex-wrap:wrap;">${tags}</div>
+                            <div class="fit-info ${res.valid ? 'fit-good' : 'fit-bad'}">
+                                ${res.valid ? '✓ 擬合成功 (常數 C ≈ ' + res.offset.toFixed(2) + ')' : '⚠️ 數據不足或有矛盾 (估算 C ≈ ' + res.offset.toFixed(2) + ')'}
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <label>當前屬性值</label>
+                            <input type="number" value="${attr.userVal}" oninput="updateVal('${attr.id}', this.value)">
+                        </div>
+
+                        <div class="result-grid">
+                            <div class="res-item">
+                                <span class="res-label">貢獻治療</span>
+                                <div class="res-val">${res.contrib}</div>
+                            </div>
+                            <div class="res-item">
+                                <span class="res-label">下個門檻目標</span>
+                                <div class="res-val highlight">${res.recNext}</div>
+                                <div style="font-size:0.8rem; color:#999;">${res.exactNext.toFixed(2)}</div>
+                            </div>
+                            <div class="res-item">
+                                <span class="res-label">還差</span>
+                                <div class="res-val" style="color:#e74c3c;">${res.gap >= 0 ? '+' : ''}${res.gap}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+            });
+            saveData();
+        }
+
+        // 交互函數
+        function toggleCalib(id) {
+            document.getElementById(`calib-${id}`).classList.toggle('show');
+        }
+
+        function updateVal(id, val) {
+            const attr = appState.attributes.find(a => a.id === id);
+            attr.userVal = parseFloat(val) || 0;
+            renderAll(); // 這裡全渲染有點浪費，但代碼簡單
+        }
+
+        function addDataPoint(id) {
+            const v = parseFloat(document.getElementById(`val-${id}`).value);
+            const h = parseFloat(document.getElementById(`heal-${id}`).value);
+            if (!isNaN(v) && !isNaN(h)) {
+                const attr = appState.attributes.find(a => a.id === id);
+                attr.data.push([v, h]);
+                // 清空輸入
+                document.getElementById(`val-${id}`).value = '';
+                document.getElementById(`heal-${id}`).value = '';
+                renderAll();
+            }
+        }
+
+        function removeDataPoint(id, idx) {
+            const attr = appState.attributes.find(a => a.id === id);
+            attr.data.splice(idx, 1);
+            renderAll();
+        }
+
+        function recalcAll() {
+            renderAll();
+        }
+
+        function resetToDefault() {
+            if(confirm('確定要重置所有數據到預設狀態嗎？')) {
+                appState = JSON.parse(JSON.stringify(defaultData));
+                renderAll();
+            }
+        }
+
+        // 導入導出
+        function exportData() {
+            const json = JSON.stringify(appState, null, 2);
+            document.getElementById('export-area').value = json;
+            document.getElementById('export-modal').classList.add('open');
+        }
+
+        function copyExport() {
+            const copyText = document.getElementById("export-area");
+            copyText.select();
+            document.execCommand("copy");
+            alert("配置代碼已複製！您可以發送給朋友了。");
+        }
+
+        function openImportModal() {
+            document.getElementById('import-modal').classList.add('open');
+        }
+
+        function closeModal() {
+            document.querySelectorAll('.modal').forEach(m => m.classList.remove('open'));
+        }
+
+        function importData() {
+            try {
+                const raw = document.getElementById('import-area').value;
+                const data = JSON.parse(raw);
+                if (data.attributes && data.base) {
+                    appState = data;
+                    document.getElementById('base-healing').value = data.base;
+                    renderAll();
+                    closeModal();
+                    alert("導入成功！");
+                } else {
+                    alert("格式錯誤：缺少關鍵字段");
+                }
+            } catch(e) {
+                alert("無效的 JSON 格式");
+            }
+        }
+
+        function getColor(id) {
+            const map = { 'pofang': '#2c3e50', 'mingzhong': '#2980b9', 'yuansu': '#f39c12', 'kezhi': '#8e44ad', 'hushi': '#27ae60' };
+            return map[id] || '#7f8c8d';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
